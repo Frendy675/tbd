@@ -1,0 +1,46 @@
+services:
+  minio1:
+    image: quay.io/minio/minio:latest
+    container_name: minio1
+    volumes:
+      - minio1-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  minio2:
+    image: quay.io/minio/minio:latest
+    container_name: minio2
+    volumes:
+      - minio2-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  minio3:
+    image: quay.io/minio/minio:latest
+    container_name: minio3
+    volumes:
+      - minio3-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  minio4:
+    image: quay.io/minio/minio:latest
+    container_name: minio4
+    volumes:
+      - minio4-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  volumes:
+  minio1-data:
+  minio2-data:
+  minio3-data:
+  minio4-data:
