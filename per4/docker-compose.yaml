@@ -4,6 +4,9 @@ services:
     container_name: minio1
     volumes:
       - minio1-data:/data
+    ports:
+      - "9001:9001" # akses console ui untuk minio 1
+      - "9000:9000" # akses s3 api utama
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: secretsecret
@@ -39,7 +42,7 @@ services:
       MINIO_ROOT_PASSWORD: secretsecret
     command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
 
-  volumes:
+volumes:
   minio1-data:
   minio2-data:
   minio3-data:
