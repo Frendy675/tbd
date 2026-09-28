@@ -3,9 +3,11 @@ from minio.error import S3Error
 import pandas as pd
 from io import BytesIO
 
-# =========================
+
+# ==========================================
 # Koneksi ke MinIO
-# =========================
+# ==========================================
+
 client = Minio(
     "localhost:9000",
     access_key="admin",
@@ -13,21 +15,25 @@ client = Minio(
     secure=False
 )
 
-# =========================
-# Konfigurasi
-# =========================
-source_bucket = "bronze"
-source_file = "Book1.csv"
 
-target_bucket = "silver"
-target_file = "Book1_clean.csv"
+# ==========================================
+# Konfigurasi
+# ==========================================
+
+source_bucket = "silver"
+source_file = "Book1_clean.csv"
+
+target_bucket = "gold"
+target_file = "Book1_aggregate.csv"
 
 
 try:
+
     # ==========================================
-    # STEP 1 - BACA DATA DARI BUCKET BRONZE
+    # STEP 1 - BACA DATA DARI SILVER
     # ==========================================
-    print("Membaca data dari bronze...")
+
+    print("Membaca data dari bucket silver...")
 
     response = client.get_object(
         source_bucket,
@@ -39,64 +45,65 @@ try:
     response.close()
     response.release_conn()
 
-    # Karena CSV menggunakan ;
     df = pd.read_csv(
         BytesIO(data),
         sep=";"
     )
 
-    print("\nData sebelum cleaning:")
+    print("\nData dari silver:")
     print(df)
 
+
     # ==========================================
-    # STEP 2 - PEMBERSIHAN DATA
+    # STEP 2 - HITUNG TOTAL PER BARIS
     # ==========================================
 
-    # Bersihkan spasi pada nama kolom
-    df.columns = df.columns.str.strip()
+    df["total"] = df["harga"] * df["jumlah"]
 
-    # Bersihkan spasi pada data string
-    df["nama"] = df["nama"].astype(str).str.strip()
-
-    # Ubah kolom numerik menjadi angka
-    df["id"] = pd.to_numeric(df["id"], errors="coerce")
-    df["harga"] = pd.to_numeric(df["harga"], errors="coerce")
-    df["jumlah"] = pd.to_numeric(df["jumlah"], errors="coerce")
-
-    # Hapus data yang memiliki nilai kosong
-    # pada kolom wajib
-    df = df.dropna(
-        subset=["id", "nama", "harga", "jumlah"]
-    )
-
-    # Hapus data duplikat
-    df = df.drop_duplicates()
-
-    # Pastikan tipe data integer
-    df["id"] = df["id"].astype(int)
-    df["harga"] = df["harga"].astype(int)
-    df["jumlah"] = df["jumlah"].astype(int)
-
-    print("\nData setelah cleaning:")
+    print("\nData dengan total:")
     print(df)
 
+
     # ==========================================
-    # STEP 3 - BUAT BUCKET SILVER
+    # STEP 3 - AGGREGATE
+    # ==========================================
+
+    aggregate_df = pd.DataFrame({
+        "total_jumlah": [df["jumlah"].sum()],
+        "total": [df["total"].sum()]
+    })
+
+
+    print("\nHasil aggregate:")
+    print(aggregate_df)
+
+
+    # ==========================================
+    # STEP 4 - BUAT BUCKET GOLD
     # ==========================================
 
     if not client.bucket_exists(target_bucket):
+
         client.make_bucket(target_bucket)
-        print(f"\nBucket '{target_bucket}' berhasil dibuat.")
+
+        print(
+            f"\nBucket '{target_bucket}' berhasil dibuat."
+        )
+
     else:
-        print(f"\nBucket '{target_bucket}' sudah tersedia.")
+
+        print(
+            f"\nBucket '{target_bucket}' sudah tersedia."
+        )
+
 
     # ==========================================
-    # STEP 4 - UBAH DATAFRAME KE CSV
+    # STEP 5 - UBAH HASIL AGGREGATE KE CSV
     # ==========================================
 
     csv_buffer = BytesIO()
 
-    df.to_csv(
+    aggregate_df.to_csv(
         csv_buffer,
         index=False,
         sep=";"
@@ -104,8 +111,9 @@ try:
 
     csv_buffer.seek(0)
 
+
     # ==========================================
-    # STEP 5 - UPLOAD KE SILVER
+    # STEP 6 - SIMPAN KE GOLD
     # ==========================================
 
     client.put_object(
@@ -116,12 +124,20 @@ try:
         content_type="text/csv"
     )
 
-    print("\nData bersih berhasil disimpan!")
-    print(f"Bucket : {target_bucket}")
-    print(f"File   : {target_file}")
+
+    print("\n================================")
+    print("Aggregate berhasil disimpan!")
+    print("Bucket :", target_bucket)
+    print("File   :", target_file)
+    print("================================")
+
 
 except S3Error as e:
+
     print("Error MinIO:", e)
 
+
 except Exception as e:
+
     print("Error:", e)
+    
