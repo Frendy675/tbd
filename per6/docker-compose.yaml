@@ -1,0 +1,53 @@
+services:
+  seaweedfs:
+    image: chrislisf/seaweedfs
+    container_name: seaweedfs
+    volumes:
+      - seaweedfs:/data
+    ports:
+      - "8333:8333" # API
+      - "9333:9333" # UI Cluster
+      - "7777:8888" # UI Filler
+    environment:
+      AWS_ACCESS_KEY: admin
+      AWS_SECRET_ACCESS_KEY: secret
+    command: server -d=/data -s3 -filer
+    networks:
+      - tbd_network
+
+  jupyter:
+    image: quay.io/jupyter/minimal-notebook:latest
+    container_name: jupyter
+    volumes:
+      - minio2-data:/data
+    ports:
+      - "8888:8888"  
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  minio3:
+    image: quay.io/minio/minio:latest
+    container_name: minio3
+    volumes:
+      - minio3-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+  minio4:
+    image: quay.io/minio/minio:latest
+    container_name: minio4
+    volumes:
+      - minio4-data:/data
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: secretsecret
+    command: server http://minio1/data http://minio2/data http://minio3/data http://minio4/data --console-address ":9001"
+
+volumes:
+  minio1-data:
+  minio2-data:
+  minio3-data:
+  minio4-data:
