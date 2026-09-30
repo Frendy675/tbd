@@ -1,4 +1,4 @@
 id,store,product,price,qty
 1,s1,p1,2000,2
 2,s2,p2,3000,7
-3,s2,p3,2000,4
+3,s1,p3,2000,4
