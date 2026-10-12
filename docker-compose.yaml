@@ -167,8 +167,8 @@ volumes:
   nifi-database:
   pgdata:
   seaweed-data:
-    external: true
-    name: 20261_seaweed-data
+    # external: true
+    # name: 20261_seaweed-data
 
 networks:
   docker_network:
