@@ -1,4 +1,78 @@
 services:
+  # NoSQL Column Family
+  cassandra2:
+    image: cassandra:latest
+    container_name: cassandra2
+    ports:
+      - "9043:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "MyCassandraCluster"
+      CASSANDRA_SEEDS: "cassandra"
+      CASSANDRA_DC: "DC1"
+      CASSANDRA_RACK: "Rack2"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "100M"
+    networks:
+      - docker_network
+    volumes:
+      - ./cassandra2:/var/lib/cassandra
+    depends_on:
+      - cassandra
+  cassandra3:
+    image: cassandra:latest
+    container_name: cassandra3
+    ports:
+      - "9044:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "MyCassandraCluster"
+      CASSANDRA_SEEDS: "cassandra"
+      CASSANDRA_DC: "DC1"
+      CASSANDRA_RACK: "Rack3"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "100M"
+    networks:
+      - docker_network
+    volumes:
+      - ./cassandra3:/var/lib/cassandra
+    depends_on:
+      - cassandra2
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "MyCassandraCluster"
+      CASSANDRA_DC: "DC1"
+      CASSANDRA_RACK: "Rack1"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+    networks:
+      - docker_network
+    volumes:
+      - ./cassandra:/var/lib/cassandra
+  # NoSQL Document Store
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secretsecret
+    networks:
+      - docker_network 
+    volumes:
+      - mongodb_data:/data/db
+  python:
+    build: ./python
+    container_name: python
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -31,13 +105,11 @@ services:
     environment:
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=secret
-    command: server -dir=/data -s3 -filer -volume.max=10
+    command: "server -dir=/data -filer -s3 -s3.port=8333 -volume.max=50 -master.volumeSizeLimitMB=200"
     networks:
       - docker_network
-
   jupyter:
-    # image: quay.io/jupyter/minimal-notebook:latest
-    build: .
+    build: ./jupyter
     container_name: jupyter
     ports:
       - "8888:8888"
@@ -47,13 +119,12 @@ services:
     volumes:
       - ./jupyter:/home/jovyan/work
     networks:
-      - docker_network
-    
+      - docker_network 
   kafka:
     image: apache/kafka:latest
     container_name: kafka
     ports:
-      - "9094:9094"
+      - "9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
@@ -67,10 +138,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     volumes:
-      - ./docker_volumes/kafka:/var/lib/kafka/data
+      - ./kafka:/var/lib/kafka/data
     networks:
       - docker_network
-
   spark:
     image: bitnami/spark:3.5.0
     container_name: spark
@@ -95,7 +165,6 @@ services:
       - ./docker_volumes/qdrant:/qdrant/storage:z
     networks:
       - docker_network
-
   postgres:
     image: postgres:15-alpine
     container_name: postgres
@@ -149,8 +218,7 @@ services:
     volumes:
       - nifi-conf:/opt/nifi/nifi-current/conf
       - nifi-state:/opt/nifi/nifi-current/state
-      - nifi-database:/opt/nifi/nifi-current/database
-    
+      - nifi-database:/opt/nifi/nifi-current/database 
   cloudbeaver:
     image: dbeaver/cloudbeaver:24.0.0
     container_name: cloudbeaver
@@ -166,10 +234,9 @@ volumes:
   nifi-state:
   nifi-database:
   pgdata:
+  mongodb_data:
   seaweed-data:
-    # external: true
-    # name: 20261_seaweed-data
-
+  
 networks:
   docker_network:
     driver: bridge
