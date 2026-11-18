@@ -1,4 +1,59 @@
+volumes:
+  nifi-conf:
+  nifi-state:
+  nifi-database:
+  pgdata:
+  mongodb_data:
+  seaweedfs-data1: 
+  seaweedfs-data2:
+  seaweedfs-data3:
+  qdrant_volume:
+networks:
+  docker_network:
+    driver: bridge
 services:
+  # 18
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"   # REST API + Web Dashboard
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_volume:/qdrant/storage
+    networks:
+      - docker_network
+  # 16
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    hostname: clickhouse
+    environment:
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: secretsecret
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123" # Web UI
+      - "9090:9000"
+    volumes:
+      - ./clickhouse:/var/lib/clickhouse
+    networks:
+      - docker_network
+  # NoSQL Graph Database
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    ports:
+      - "7474:7474" # UI
+      - "7687:7687" # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/secretsecret
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/plugins:/plugins
+    networks:
+      - docker_network
   # NoSQL Column Family
   cassandra2:
     image: cassandra:latest
@@ -97,11 +152,11 @@ services:
     image: chrislusf/seaweedfs
     container_name: seaweedfs
     ports:
-      - "8333:8333" # API
-      - "9333:9333" # Cluster UI
-      - "7777:8888" # Filer UI
+      - "8334:8333" # API
+      - "9334:9333" # Cluster UI
+      - "8884:8888" # Filer UI
     volumes:
-      - seaweed-data:/data
+      - seaweedfs-data1:/data
     environment:
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=secret
@@ -141,33 +196,9 @@ services:
       - ./kafka:/var/lib/kafka/data
     networks:
       - docker_network
-  spark:
-    image: bitnami/spark:3.5.0
-    container_name: spark
-    hostname: spark
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    ports:
-      - "8080:8080" # Spark UI
-      - "7077:7077"
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: qdrant
-    hostname: qdrant
-    ports:
-      - "6333:6333"  # HTTP REST API & Web Dashboard
-      - "6334:6334"  # gRPC Engine
-    volumes:
-      - ./docker_volumes/qdrant:/qdrant/storage:z
-    networks:
-      - docker_network
   postgres:
     image: postgres:15-alpine
-    container_name: postgres
+    container_name: postgresdocker compose up -d clickhouse seaweedfs
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secretsecret
@@ -228,15 +259,3 @@ services:
       - ./cloudbeaver:/opt/cloudbeaver/workspace
     networks:
       - docker_network
-
-volumes:
-  nifi-conf:
-  nifi-state:
-  nifi-database:
-  pgdata:
-  mongodb_data:
-  seaweed-data:
-  
-networks:
-  docker_network:
-    driver: bridge
